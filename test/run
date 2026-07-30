@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+#
+# run - check the sentence-per-line rule against fixtures.md.
+#
+# Expectations are derived from the fixture rather than hard coded: every line
+# the rule must report contains the word FLAGME, and no other line may be
+# reported. That way the fixture can grow without a table of line numbers
+# drifting out of date.
+#
+# Runs from its own directory so markdownlint-cli2 picks up the config here
+# and not the repo root one, which ignores this tree.
+
+set -u
+
+cd "$(dirname "$(readlink -f "$0")")" || exit 1
+
+command -v markdownlint-cli2 > /dev/null 2>& 1 || {
+	printf 'run: markdownlint-cli2 not found; npm install -g markdownlint-cli2\n' >&2
+	exit 1
+}
+
+expected=$(grep -n FLAGME fixtures.md | cut -d: -f1 | sort -n -u)
+actual=$(markdownlint-cli2 fixtures.md 2>&1 |
+	sed -n 's/^fixtures\.md:\([0-9]*\).*/\1/p' | sort -n -u)
+
+if [ "$expected" = "$actual" ]; then
+	printf 'ok      %s lines flagged, as expected\n' "$(printf '%s\n' "$expected" | grep -c .)"
+	exit 0
+fi
+
+printf 'FAIL    reported lines differ from the FLAGME markers\n' >&2
+diff -u <(printf '%s\n' "$expected") <(printf '%s\n' "$actual") \
+	--label expected --label actual >&2
+printf '\nFull output:\n' >&2
+markdownlint-cli2 fixtures.md >&2
+exit 1
