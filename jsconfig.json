@@ -1,0 +1,14 @@
+{
+  // An editor's TypeScript server reads these options for the // @ts-check
+  // files. Without them, every untyped parameter is reported as an implicit
+  // any.
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "module": "nodenext",
+    "target": "es2023",
+    "strict": true
+  },
+  "include": ["**/*.mjs", "**/*.cjs", "**/*.js"]
+}

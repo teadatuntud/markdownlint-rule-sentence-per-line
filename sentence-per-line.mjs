@@ -5,6 +5,22 @@
 // end at a sentence boundary. The last line may be a fragment without a full
 // stop.
 
+// These types cover the part of the markdownlint API that the rule uses,
+// because the repo does not install markdownlint. An inline token always has
+// a map.
+/**
+ * @typedef {{ type: string, map: [number, number] }} Token
+ * @typedef {{
+ *   lines: string[],
+ *   parsers: { markdownit: { tokens: Token[] } },
+ * }} RuleParams
+ * @typedef {(info: {
+ *   lineNumber: number,
+ *   detail?: string,
+ *   context?: string,
+ * }) => void} OnError
+ */
+
 // Words whose full stop is an abbreviation rather than a sentence end.
 const ABBREVIATIONS = new Set([
   "e.g.",
@@ -31,6 +47,7 @@ const MASKED = [/`+[^`]*`+/g, /\]\([^)]*\)/g, /<[^ >]+>/g, /\bhttps?:\/\/\S+/g];
 // because a marker such as "1." looks like a sentence end.
 const LEADING_MARKERS = /^[\s>]*(?:[-*+]\s+|\d+[.)]\s+)?/;
 
+/** @param {string} line */
 function mask(line) {
   let masked = line;
   for (const pattern of MASKED) {
@@ -41,6 +58,10 @@ function mask(line) {
 
 // True when the full stop at index belongs to an abbreviation, an initial or
 // an ellipsis.
+/**
+ * @param {string} text
+ * @param {number} index
+ */
 function isFalseBoundary(text, index) {
   if (text[index] !== ".") {
     return false;
@@ -56,6 +77,7 @@ function isFalseBoundary(text, index) {
 }
 
 // Returns the offset just past each sentence boundary on the line.
+/** @param {string} text */
 function boundaries(text) {
   const ends = [];
 
@@ -77,10 +99,19 @@ function boundaries(text) {
   return ends;
 }
 
+/**
+ * @param {string} line
+ * @param {number} from
+ */
 function snippet(line, from) {
   return line.slice(Math.max(0, from - 30), from).trimStart() || line.trim();
 }
 
+/**
+ * @param {string[]} lines
+ * @param {number} startLine
+ * @param {OnError} onError
+ */
 function checkParagraph(lines, startLine, onError) {
   lines.forEach((line, offset) => {
     const lineNumber = startLine + offset;
@@ -118,13 +149,16 @@ function checkParagraph(lines, startLine, onError) {
   });
 }
 
-/** @type {import("markdownlint").Rule} */
 const rule = {
   "names": ["sentence-per-line"],
   "description": "Each line holds exactly one sentence",
   "tags": ["whitespace", "prose"],
   "parser": "markdownit",
   // fixInfo is left out because prose is rewrapped by hand.
+  /**
+   * @param {RuleParams} params
+   * @param {OnError} onError
+   */
   "function": (params, onError) => {
     const { tokens } = params.parsers.markdownit;
 
