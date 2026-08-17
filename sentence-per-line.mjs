@@ -1,7 +1,5 @@
 // @ts-check
 
-"use strict";
-
 // Each line holds one full sentence. The rule reports a line that starts a
 // second sentence, and a line before the last in a paragraph that does not
 // end at a sentence boundary. The last line may be a fragment without a full
@@ -143,4 +141,4 @@ const rule = {
   },
 };
 
-module.exports = rule;
+export default rule;
