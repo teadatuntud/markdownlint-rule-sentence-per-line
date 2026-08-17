@@ -1,0 +1,4 @@
+# Markdown is wrapped by hand.
+*.md
+
+package-lock.json

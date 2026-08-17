@@ -1,0 +1,19 @@
+# Editors, prettier and shfmt read these settings, so the indent is set only
+# here. Passing shfmt any formatting flag makes it ignore this file.
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+# Only shfmt reads this.
+switch_case_indent = true
+
+[*.md]
+# Two trailing spaces are a markdown hard break.
+trim_trailing_whitespace = false

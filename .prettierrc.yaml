@@ -1,0 +1,4 @@
+# Indentation comes from .editorconfig.
+
+# Keep quoted keys in rule objects, as markdownlint's docs write them.
+quoteProps: preserve
