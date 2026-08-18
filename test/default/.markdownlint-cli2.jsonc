@@ -1,0 +1,10 @@
+{
+  // The fixtures break other rules on purpose.
+  "customRules": ["../../sentence-per-line.mjs"],
+  "config": {
+    "default": false,
+    "sentence-per-line": true
+  },
+  "noBanner": true,
+  "noProgress": true
+}
