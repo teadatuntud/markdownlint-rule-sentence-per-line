@@ -42,6 +42,13 @@ The emphasis marker does not hide the boundary.
 
 This one ends in **bold.** A second sentence follows it, so the line is FLAGME.
 
+## Links around a boundary
+
+A sentence may end inside [a link.](https://example.com/guide)
+The masked destination does not hide the boundary either.
+
+It ends in [a link.](https://example.com/guide) A second sentence makes it FLAGME.
+
 ## Fragments and closing punctuation
 
 A paragraph's last line may be a fragment with no full stop, like this one

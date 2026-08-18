@@ -41,7 +41,15 @@ const HARD_BREAK = /(\s\s|\\)$/;
 
 // Spans whose punctuation is not prose: `code`, ](destination), <autolink>,
 // and bare URLs. Masked to same-length filler so column offsets survive.
-const MASKED = [/`+[^`]*`+/g, /\]\([^)]*\)/g, /<[^ >]+>/g, /\bhttps?:\/\/\S+/g];
+// A link destination becomes spaces, so that a full stop at the end of the
+// link text still counts as a boundary.
+/** @type {[RegExp, string][]} */
+const MASKED = [
+  [/`+[^`]*`+/g, "x"],
+  [/\]\([^)]*\)/g, " "],
+  [/<[^ >]+>/g, "x"],
+  [/\bhttps?:\/\/\S+/g, "x"],
+];
 
 // Matches the blockquote arrows and list marker at the start of a line,
 // because a marker such as "1." looks like a sentence end.
@@ -50,8 +58,8 @@ const LEADING_MARKERS = /^[\s>]*(?:[-*+]\s+|\d+[.)]\s+)?/;
 /** @param {string} line */
 function mask(line) {
   let masked = line;
-  for (const pattern of MASKED) {
-    masked = masked.replace(pattern, (match) => "x".repeat(match.length));
+  for (const [pattern, filler] of MASKED) {
+    masked = masked.replace(pattern, (match) => filler.repeat(match.length));
   }
   return masked.replace(LEADING_MARKERS, (match) => " ".repeat(match.length));
 }
