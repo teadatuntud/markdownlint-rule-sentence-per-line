@@ -48,7 +48,8 @@ const MASKED = [
   [/`+[^`]*`+/g, "x"],
   [/\]\([^)]*\)/g, " "],
   [/<[^ >]+>/g, "x"],
-  [/\bhttps?:\/\/\S+/g, "x"],
+  // The URL stops before trailing punctuation.
+  [/\bhttps?:\/\/\S*[^\s.,;:!?]/g, "x"],
 ];
 
 // Matches the blockquote arrows and list marker at the start of a line,

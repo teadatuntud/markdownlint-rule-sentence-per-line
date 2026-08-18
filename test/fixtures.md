@@ -32,6 +32,9 @@ See the [reference manual](https://example.com/a.b.c) for the details.
 https://example.com/a/very/long/path/that/cannot/be/broken/at/all
 is the canonical source for that.
 
+A sentence may end in a bare URL, as in https://example.com/a.
+The full stop after it is still the end of the sentence.
+
 /usr/local/share/doc/example/reference/manual.md
 is where the installed copy lives, and it has no break point either.
 
