@@ -13,6 +13,7 @@
  * @typedef {{
  *   lines: string[],
  *   parsers: { markdownit: { tokens: Token[] } },
+ *   config: { abbreviations?: string[] },
  * }} RuleParams
  * @typedef {(info: {
  *   lineNumber: number,
@@ -21,7 +22,8 @@
  * }) => void} OnError
  */
 
-// Words whose full stop is an abbreviation rather than a sentence end.
+// A full stop after these does not end a sentence, so a sentence that really
+// ends in one is missed. Only list words that are rarely anything else.
 const ABBREVIATIONS = new Set([
   "e.g.",
   "i.e.",
@@ -72,8 +74,9 @@ function mask(line) {
 /**
  * @param {string} text
  * @param {number} index
+ * @param {Set<string>} abbreviations
  */
-function isFalseBoundary(text, index) {
+function isFalseBoundary(text, index, abbreviations) {
   if (text[index] !== ".") {
     return false;
   }
@@ -84,12 +87,15 @@ function isFalseBoundary(text, index) {
   const before = text.slice(0, index + 1);
   const word = (/[A-Za-z.]+$/.exec(before) || [""])[0];
 
-  return ABBREVIATIONS.has(word.toLowerCase()) || /^[A-Z]\.$/.test(word);
+  return abbreviations.has(word.toLowerCase()) || /^[A-Z]\.$/.test(word);
 }
 
 // Returns the offset just past each sentence boundary on the line.
-/** @param {string} text */
-function boundaries(text) {
+/**
+ * @param {string} text
+ * @param {Set<string>} abbreviations
+ */
+function boundaries(text, abbreviations) {
   const ends = [];
 
   BOUNDARY.lastIndex = 0;
@@ -101,7 +107,7 @@ function boundaries(text) {
     // "README.md".
     if (
       (next === undefined || /\s/.test(next)) &&
-      !isFalseBoundary(text, match.index)
+      !isFalseBoundary(text, match.index, abbreviations)
     ) {
       ends.push(end);
     }
@@ -122,12 +128,13 @@ function snippet(line, from) {
  * @param {string[]} lines
  * @param {number} startLine
  * @param {OnError} onError
+ * @param {Set<string>} abbreviations
  */
-function checkParagraph(lines, startLine, onError) {
+function checkParagraph(lines, startLine, onError, abbreviations) {
   lines.forEach((line, offset) => {
     const lineNumber = startLine + offset;
     const masked = mask(line);
-    const ends = boundaries(masked);
+    const ends = boundaries(masked, abbreviations);
     const last = offset === lines.length - 1;
 
     for (const end of ends) {
@@ -172,6 +179,11 @@ const rule = {
    */
   "function": (params, onError) => {
     const { tokens } = params.parsers.markdownit;
+    const configured = params.config.abbreviations ?? [];
+    const abbreviations = new Set([
+      ...ABBREVIATIONS,
+      ...configured.map((word) => word.toLowerCase()),
+    ]);
 
     tokens.forEach((token, index) => {
       if (
@@ -181,7 +193,12 @@ const rule = {
         return;
       }
       const [start, end] = token.map;
-      checkParagraph(params.lines.slice(start, end), start + 1, onError);
+      checkParagraph(
+        params.lines.slice(start, end),
+        start + 1,
+        onError,
+        abbreviations,
+      );
     });
   },
 };

@@ -1,0 +1,14 @@
+{
+  // The fixtures break other rules on purpose.
+  "customRules": ["../../sentence-per-line.mjs"],
+  "config": {
+    "default": false,
+    // These add to the built-in abbreviations, and the fixture uses words from
+    // both lists.
+    "sentence-per-line": {
+      "abbreviations": ["dr.", "prof."]
+    }
+  },
+  "noBanner": true,
+  "noProgress": true
+}
