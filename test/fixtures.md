@@ -35,6 +35,13 @@ is the canonical source for that.
 /usr/local/share/doc/example/reference/manual.md
 is where the installed copy lives, and it has no break point either.
 
+## Emphasis around a boundary
+
+A sentence may end in **bold.**
+The emphasis marker does not hide the boundary.
+
+This one ends in **bold.** A second sentence follows it, so the line is FLAGME.
+
 ## Fragments and closing punctuation
 
 A paragraph's last line may be a fragment with no full stop, like this one

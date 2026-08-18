@@ -33,9 +33,9 @@ const ABBREVIATIONS = new Set([
   "no.",
 ]);
 
-// A full stop, question or exclamation mark, plus any closing quotes or
-// brackets that belong to the same sentence.
-const BOUNDARY = /[.?!]["'’)\]`]*/g;
+// Matches sentence punctuation and any closing quotes, brackets or emphasis
+// markers after it.
+const BOUNDARY = /[.?!]["'’)\]`*_]*/g;
 
 const HARD_BREAK = /(\s\s|\\)$/;
 
