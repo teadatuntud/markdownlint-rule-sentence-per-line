@@ -37,7 +37,9 @@ const ABBREVIATIONS = new Set([
 // markers after it.
 const BOUNDARY = /[.?!]["'’)\]`*_]*/g;
 
-const HARD_BREAK = /(\s\s|\\)$/;
+// A sentence may continue after a backslash hard break. Two trailing spaces
+// are not accepted, because they are invisible in the source.
+const HARD_BREAK = /\\$/;
 
 // Spans whose punctuation is not prose: `code`, ](destination), <autolink>,
 // and bare URLs. Masked to same-length filler so column offsets survive.

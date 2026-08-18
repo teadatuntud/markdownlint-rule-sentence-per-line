@@ -52,6 +52,11 @@ The masked destination does not hide the boundary either.
 
 It ends in [a link.](https://example.com/guide) A second sentence makes it FLAGME.
 
+## Hard breaks
+
+A trailing backslash asks for a break, so this sentence may run\
+on to the next line without being reported.
+
 ## Fragments and closing punctuation
 
 A paragraph's last line may be a fragment with no full stop, like this one
