@@ -66,6 +66,16 @@ Parenthetical endings work too (as here).
 A question ends a sentence?
 So does an exclamation!
 
+## Quotations that hold a full stop
+
+A tagline ("The right partner is in your dome." with a subtitle beneath it) sets the tone.
+
+Incoming reads **"Accepted invitations move to Crew Links. Only pending paperwork is shown."**
+
+He said "Go now." She left, so this line is FLAGME.
+
+The banner reads **"Try again."** The user clicks it, so this line is FLAGME.
+
 ## Blocks the rule must not touch
 
 | Column | Meaning |

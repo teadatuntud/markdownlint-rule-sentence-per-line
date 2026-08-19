@@ -116,6 +116,40 @@ function boundaries(text, abbreviations) {
   return ends;
 }
 
+// True when a parenthesis or double quotation is still open at index. A full
+// stop inside one does not end the outer sentence.
+//
+// Square brackets are not counted. A link destination is masked to spaces, so
+// the "]" that closes the link text is gone and the "[" would never close.
+// Single quotes are not counted either, because a possessive apostrophe looks
+// the same as an opening quote. The curly double quotes are written as
+// escapes, because the opening and closing characters look alike here.
+/**
+ * @param {string} text
+ * @param {number} index
+ */
+function insideOpenSpan(text, index) {
+  let brackets = 0;
+  let quotes = 0;
+  let straight = false;
+
+  for (const character of text.slice(0, index)) {
+    if (character === "(") {
+      brackets += 1;
+    } else if (character === ")") {
+      brackets = Math.max(0, brackets - 1);
+    } else if (character === "\u201c") {
+      quotes += 1;
+    } else if (character === "\u201d") {
+      quotes = Math.max(0, quotes - 1);
+    } else if (character === '"') {
+      straight = !straight;
+    }
+  }
+
+  return brackets > 0 || quotes > 0 || straight;
+}
+
 /**
  * @param {string} line
  * @param {number} from
@@ -137,15 +171,19 @@ function checkParagraph(lines, startLine, onError, abbreviations) {
     const ends = boundaries(masked, abbreviations);
     const last = offset === lines.length - 1;
 
+    // Only a boundary with text after it can start a second sentence, so the
+    // suppressions below never reach the boundary that ends a line, and the
+    // mid-sentence check underneath sees the same offsets it always did.
     for (const end of ends) {
-      if (masked.slice(end).trim() !== "") {
-        onError({
-          lineNumber,
-          "detail": "Second sentence starts on the same line",
-          "context": snippet(line, end),
-        });
-        break;
+      if (masked.slice(end).trim() === "" || insideOpenSpan(masked, end)) {
+        continue;
       }
+      onError({
+        lineNumber,
+        "detail": "Second sentence starts on the same line",
+        "context": snippet(line, end),
+      });
+      break;
     }
 
     if (last || HARD_BREAK.test(line)) {
