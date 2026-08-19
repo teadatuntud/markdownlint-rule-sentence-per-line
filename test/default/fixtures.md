@@ -72,6 +72,12 @@ A tagline ("The right partner is in your dome." with a subtitle beneath it) sets
 
 Incoming reads **"Accepted invitations move to Crew Links. Only pending paperwork is shown."**
 
+The page renders **"Unable to load."** as an alert and a **"Retry"** action.
+
+The page renders **"Unable to load."** as an alert. A second sentence still makes it FLAGME.
+
+Run the tool. `npm test` fails, so a masked span does not read as a lowercase word and this line is FLAGME.
+
 He said "Go now." She left, so this line is FLAGME.
 
 The banner reads **"Try again."** The user clicks it, so this line is FLAGME.

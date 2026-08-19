@@ -43,17 +43,18 @@ const BOUNDARY = /[.?!]["'’)\]`*_]*/g;
 // are not accepted, because they are invisible in the source.
 const HARD_BREAK = /\\$/;
 
-// Spans whose punctuation is not prose: `code`, ](destination), <autolink>,
-// and bare URLs. Masked to same-length filler so column offsets survive.
-// A link destination becomes spaces, so that a full stop at the end of the
-// link text still counts as a boundary.
+// Code spans, link destinations, autolinks and bare URLs become filler of the
+// same length, so columns stay correct. A link destination becomes spaces, so
+// a full stop at the end of the link text still ends the sentence. The other
+// filler is upper case, because lowercase text after a full stop means the
+// sentence continues.
 /** @type {[RegExp, string][]} */
 const MASKED = [
-  [/`+[^`]*`+/g, "x"],
+  [/`+[^`]*`+/g, "X"],
   [/\]\([^)]*\)/g, " "],
-  [/<[^ >]+>/g, "x"],
+  [/<[^ >]+>/g, "X"],
   // The URL stops before trailing punctuation.
-  [/\bhttps?:\/\/\S*[^\s.,;:!?]/g, "x"],
+  [/\bhttps?:\/\/\S*[^\s.,;:!?]/g, "X"],
 ];
 
 // Matches the blockquote arrows and list marker at the start of a line,
@@ -150,6 +151,23 @@ function insideOpenSpan(text, index) {
   return brackets > 0 || quotes > 0 || straight;
 }
 
+// Finds the first letter after a boundary, past whitespace, opening quotes,
+// brackets and emphasis markers.
+const NEXT_LETTER = /^[\s"'([*_\u201c\u2018]*([A-Za-z])/;
+
+// True when the next word starts in lower case, so the sentence continues,
+// as after a quotation that ends in a full stop. A sentence that starts with
+// a lowercase word, such as a command name, is missed.
+/**
+ * @param {string} text
+ * @param {number} end
+ */
+function continuesInLowerCase(text, end) {
+  const match = NEXT_LETTER.exec(text.slice(end));
+
+  return match !== null && match[1] === match[1].toLowerCase();
+}
+
 /**
  * @param {string} line
  * @param {number} from
@@ -175,7 +193,11 @@ function checkParagraph(lines, startLine, onError, abbreviations) {
     // suppressions below never reach the boundary that ends a line, and the
     // mid-sentence check underneath sees the same offsets it always did.
     for (const end of ends) {
-      if (masked.slice(end).trim() === "" || insideOpenSpan(masked, end)) {
+      if (
+        masked.slice(end).trim() === "" ||
+        insideOpenSpan(masked, end) ||
+        continuesInLowerCase(masked, end)
+      ) {
         continue;
       }
       onError({
