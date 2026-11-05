@@ -7,6 +7,12 @@
     "markdownlint-rule",
     "semantic-line-breaks"
   ],
+  "homepage": "https://github.com/teadatuntud/markdownlint-rule-sentence-per-line#readme",
+  "bugs": "https://github.com/teadatuntud/markdownlint-rule-sentence-per-line/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/teadatuntud/markdownlint-rule-sentence-per-line.git"
+  },
   "private": true,
   "license": "UNLICENSED",
   "type": "module",
