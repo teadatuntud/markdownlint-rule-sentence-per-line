@@ -15,6 +15,9 @@ Install it from git, pinned to a tag:
 npm install --save-dev github:teadatuntud/markdownlint-rule-sentence-per-line#v1.0.0
 ```
 
+The rule reads micromark tokens, so it needs markdownlint 0.36 or later.
+markdownlint-cli2 includes that version from 0.15.0.
+
 ## Configure
 
 Name the package in `customRules` and turn the rule on in `.markdownlint-cli2.yaml`:

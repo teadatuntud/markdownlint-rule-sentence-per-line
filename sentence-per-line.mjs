@@ -6,13 +6,18 @@
 // stop.
 
 // These types cover the part of the markdownlint API that the rule uses, so
-// the package does not depend on markdownlint. An inline token always has a
-// map.
+// the package does not depend on markdownlint.
 /**
- * @typedef {{ type: string, map: [number, number] }} Token
+ * @typedef {{
+ *   type: string,
+ *   startLine: number,
+ *   startColumn: number,
+ *   text: string,
+ *   children: Token[],
+ * }} Token
  * @typedef {{
  *   lines: string[],
- *   parsers: { markdownit: { tokens: Token[] } },
+ *   parsers: { micromark: { tokens: Token[] } },
  *   config: { abbreviations?: string[] },
  * }} RuleParams
  * @typedef {(info: {
@@ -35,39 +40,100 @@ const ABBREVIATIONS = new Set([
   "no.",
 ]);
 
-// Matches sentence punctuation and any closing quotes, brackets or emphasis
-// markers after it.
-const BOUNDARY = /[.?!]["'’)\]`*_]*/g;
+// Matches sentence punctuation and any closing quotes or brackets after it.
+const BOUNDARY = /[.?!]["'’)\]]*/g;
 
 // A sentence may continue after a backslash hard break. Two trailing spaces
 // are not accepted, because they are invisible in the source.
 const HARD_BREAK = /\\$/;
 
-// Code spans, link destinations, autolinks and bare URLs become filler of the
-// same length, so columns stay correct. A link destination becomes spaces, so
-// a full stop at the end of the link text still ends the sentence. The other
-// filler is upper case, because lowercase text after a full stop means the
-// sentence continues.
-/** @type {[RegExp, string][]} */
-const MASKED = [
-  [/`+[^`]*`+/g, "X"],
-  [/\]\([^)]*\)/g, " "],
-  [/<[^ >]+>/g, "X"],
-  // The URL stops before trailing punctuation.
-  [/\bhttps?:\/\/\S*[^\s.,;:!?]/g, "X"],
-];
+// Masked so their punctuation does not count. The mask is upper case,
+// because a lowercase word after a full stop continues the sentence.
+const FILLED = new Set([
+  "autolink",
+  "codeText",
+  "htmlText",
+  "literalAutolink",
+  "mathText",
+]);
 
-// Matches the blockquote arrows and list marker at the start of a line,
-// because a marker such as "1." looks like a sentence end.
-const LEADING_MARKERS = /^[\s>]*(?:[-*+]\s+|\d+[.)]\s+)?/;
+const SKIPPED = new Set([
+  "blockQuotePrefix",
+  "gfmFootnoteCall",
+  "linePrefix",
+  "listItemIndent",
+  "reference",
+  "resource",
+]);
 
-/** @param {string} line */
-function mask(line) {
-  let masked = line;
-  for (const [pattern, filler] of MASKED) {
-    masked = masked.replace(pattern, (match) => filler.repeat(match.length));
+/**
+ * @typedef {{ lineNumber: number, text: string, columns: number[] }} Line
+ */
+
+/** @param {Token} paragraph */
+function proseLines(paragraph) {
+  /** @type {Line} */
+  let line = { lineNumber: paragraph.startLine, text: "", columns: [] };
+  const lines = [line];
+
+  const newLine = () => {
+    line = { lineNumber: line.lineNumber + 1, text: "", columns: [] };
+    lines.push(line);
+  };
+
+  /**
+   * @param {number} column
+   * @param {string} text
+   */
+  const append = (column, text) => {
+    line.text += text;
+    for (let index = 0; index < text.length; index += 1) {
+      line.columns.push(column + index);
+    }
+  };
+
+  /** @param {Token[]} tokens */
+  const walk = (tokens) => {
+    for (const token of tokens) {
+      if (token.type === "lineEnding") {
+        newLine();
+      } else if (FILLED.has(token.type)) {
+        token.text.split("\n").forEach((part, index) => {
+          if (index > 0) {
+            newLine();
+          }
+          append(index === 0 ? token.startColumn : 1, "X".repeat(part.length));
+        });
+      } else if (
+        SKIPPED.has(token.type) ||
+        /(Marker|Sequence)$/.test(token.type)
+      ) {
+        continue;
+      } else if (token.children.length > 0) {
+        walk(token.children);
+      } else {
+        append(token.startColumn, token.text);
+      }
+    }
+  };
+
+  walk(paragraph.children);
+  return lines;
+}
+
+// Skips HTML blocks, because the HTML decides how their text wraps.
+/**
+ * @param {Token[]} tokens
+ * @returns {Generator<Token>}
+ */
+function* paragraphs(tokens) {
+  for (const token of tokens) {
+    if (token.type === "paragraph") {
+      yield token;
+    } else if (token.type !== "htmlFlow") {
+      yield* paragraphs(token.children);
+    }
   }
-  return masked.replace(LEADING_MARKERS, (match) => " ".repeat(match.length));
 }
 
 // True when the full stop at index belongs to an abbreviation, an initial or
@@ -87,8 +153,10 @@ function isFalseBoundary(text, index, abbreviations) {
 
   const before = text.slice(0, index + 1);
   const word = (/[A-Za-z.]+$/.exec(before) || [""])[0];
+  // An initial is a lone capital, so the "O." that ends "I/O." is not one.
+  const initial = /(?:^|[\s("\u201c])[A-Z]\.$/.test(before);
 
-  return abbreviations.has(word.toLowerCase()) || /^[A-Z]\.$/.test(word);
+  return abbreviations.has(word.toLowerCase()) || initial;
 }
 
 // Returns the offset just past each sentence boundary on the line.
@@ -120,7 +188,6 @@ function boundaries(text, abbreviations) {
 // True when a parenthesis or double quotation is still open at index. A full
 // stop inside one does not end the outer sentence.
 //
-// Square brackets are skipped, because masking removes the "]" of a link.
 // Single quotes are skipped, because they double as apostrophes. A lone
 // straight quote, such as an inch mark, leaves the rest of its line open, so
 // the rule reports that line. A wrong report is easier to spot than a missed
@@ -151,9 +218,9 @@ function insideOpenSpan(text, index) {
   return brackets > 0 || quotes > 0 || straight;
 }
 
-// Finds the first letter after a boundary, past whitespace, opening quotes,
-// brackets and emphasis markers.
-const NEXT_LETTER = /^[\s"'([*_\u201c\u2018]*([A-Za-z])/;
+// Finds the first letter after a boundary, past whitespace, opening quotes
+// and brackets.
+const NEXT_LETTER = /^[\s"'([\u201c\u2018]*([A-Za-z])/;
 
 // True when the next word starts in lower case, so the sentence continues,
 // as after a quotation that ends in a full stop. A sentence that starts with
@@ -173,55 +240,54 @@ function continuesInLowerCase(text, end) {
  * @param {number} from
  */
 function snippet(line, from) {
-  return line.slice(Math.max(0, from - 30), from).trimStart() || line.trim();
+  // Take closing quotes and emphasis too, so **"Done."** stays whole.
+  const closers = /^[*_"'\u201d\u2019)\]]*/.exec(line.slice(from)) ?? [""];
+  const end = from + closers[0].length;
+  return line.slice(Math.max(0, end - 30), end).trimStart() || line.trim();
 }
 
 /**
- * @param {string[]} lines
- * @param {number} startLine
+ * @param {Line[]} lines
+ * @param {string[]} source
  * @param {OnError} onError
  * @param {Set<string>} abbreviations
  */
-function checkParagraph(lines, startLine, onError, abbreviations) {
-  lines.forEach((line, offset) => {
-    const lineNumber = startLine + offset;
-    const masked = mask(line);
+function checkParagraph(lines, source, onError, abbreviations) {
+  lines.forEach(({ lineNumber, text, columns }, offset) => {
+    const sourceLine = source[lineNumber - 1];
     // Both checks below use this list, so a line that ends at a quoted full
     // stop is reported as ending mid-sentence.
-    const ends = boundaries(masked, abbreviations).filter(
-      (end) => !insideOpenSpan(masked, end),
+    const ends = boundaries(text, abbreviations).filter(
+      (end) => !insideOpenSpan(text, end),
     );
     const last = offset === lines.length - 1;
 
     for (const end of ends) {
-      if (
-        masked.slice(end).trim() === "" ||
-        continuesInLowerCase(masked, end)
-      ) {
+      if (text.slice(end).trim() === "" || continuesInLowerCase(text, end)) {
         continue;
       }
       onError({
         lineNumber,
         "detail": "Second sentence starts on the same line",
-        "context": snippet(line, end),
+        "context": snippet(sourceLine, columns[end - 1]),
       });
       break;
     }
 
-    if (last || HARD_BREAK.test(line)) {
+    if (last || HARD_BREAK.test(text)) {
       return;
     }
 
-    const trimmed = masked.trimEnd();
+    const trimmed = text.trim();
     // A line with a single word, such as a long URL, cannot be broken.
-    if (!/\s/.test(trimmed.trim())) {
+    if (!/\s/.test(trimmed)) {
       return;
     }
-    if (!ends.includes(trimmed.length)) {
+    if (!ends.includes(text.trimEnd().length)) {
       onError({
         lineNumber,
         "detail": "Line ends mid-sentence; break at sentence boundaries only",
-        "context": snippet(line, line.trimEnd().length),
+        "context": snippet(sourceLine, sourceLine.trimEnd().length),
       });
     }
   });
@@ -234,35 +300,27 @@ const rule = {
     "https://github.com/teadatuntud/markdownlint-rule-sentence-per-line#readme",
   ),
   "tags": ["whitespace", "prose"],
-  "parser": "markdownit",
+  "parser": "micromark",
   // fixInfo is left out because prose is rewrapped by hand.
   /**
    * @param {RuleParams} params
    * @param {OnError} onError
    */
   "function": (params, onError) => {
-    const { tokens } = params.parsers.markdownit;
     const configured = params.config.abbreviations ?? [];
     const abbreviations = new Set([
       ...ABBREVIATIONS,
       ...configured.map((word) => word.toLowerCase()),
     ]);
 
-    tokens.forEach((token, index) => {
-      if (
-        token.type !== "inline" ||
-        tokens[index - 1].type !== "paragraph_open"
-      ) {
-        return;
-      }
-      const [start, end] = token.map;
+    for (const paragraph of paragraphs(params.parsers.micromark.tokens)) {
       checkParagraph(
-        params.lines.slice(start, end),
-        start + 1,
+        proseLines(paragraph),
+        params.lines,
         onError,
         abbreviations,
       );
-    });
+    }
   },
 };
 
