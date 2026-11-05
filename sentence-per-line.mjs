@@ -5,9 +5,9 @@
 // end at a sentence boundary. The last line may be a fragment without a full
 // stop.
 
-// These types cover the part of the markdownlint API that the rule uses,
-// because the repo does not install markdownlint. An inline token always has
-// a map.
+// These types cover the part of the markdownlint API that the rule uses, so
+// the package does not depend on markdownlint. An inline token always has a
+// map.
 /**
  * @typedef {{ type: string, map: [number, number] }} Token
  * @typedef {{

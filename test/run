@@ -11,7 +11,7 @@ set -u
 root=$(dirname "$(readlink -f "$0")")
 
 command -v markdownlint-cli2 >/dev/null 2>&1 || {
-  printf 'run: markdownlint-cli2 not found; npm install -g markdownlint-cli2\n' >&2
+  printf 'run: markdownlint-cli2 not found; run npm install, then npm test\n' >&2
   exit 1
 }
 

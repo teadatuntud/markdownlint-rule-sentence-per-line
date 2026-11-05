@@ -1,0 +1,27 @@
+{
+  "name": "markdownlint-rule-sentence-per-line",
+  "version": "1.0.0",
+  "description": "A markdownlint rule that requires one full sentence per line",
+  "keywords": [
+    "markdownlint",
+    "markdownlint-rule",
+    "semantic-line-breaks"
+  ],
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "main": "./sentence-per-line.mjs",
+  "exports": "./sentence-per-line.mjs",
+  "files": [
+    "sentence-per-line.mjs"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "test/run"
+  },
+  "devDependencies": {
+    "markdownlint-cli2": "^0.24.0"
+  }
+}
