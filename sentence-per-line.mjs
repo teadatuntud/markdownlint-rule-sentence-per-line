@@ -3,26 +3,9 @@
 // Every sentence must start a line, and every line must start a sentence.
 // A paragraph's last line may be a fragment.
 
-// These types cover the part of the markdownlint API that the rule uses, so
-// the package does not depend on markdownlint.
 /**
- * @typedef {{
- *   type: string,
- *   startLine: number,
- *   startColumn: number,
- *   text: string,
- *   children: Token[],
- * }} Token
- * @typedef {{
- *   lines: string[],
- *   parsers: { micromark: { tokens: Token[] } },
- *   config: { abbreviations?: string[] },
- * }} RuleParams
- * @typedef {(info: {
- *   lineNumber: number,
- *   detail?: string,
- *   context?: string,
- * }) => void} OnError
+ * @typedef {import("markdownlint").MicromarkToken} Token
+ * @typedef {import("markdownlint").RuleOnError} OnError
  */
 
 // A full stop after these does not end a sentence, so a sentence that really
@@ -253,12 +236,13 @@ function snippet(line, from) {
 
 /**
  * @param {Line[]} lines
- * @param {string[]} source
+ * @param {readonly string[]} source
  * @param {OnError} onError
  * @param {Set<string>} abbreviations
  */
 function checkParagraph(lines, source, onError, abbreviations) {
   let text = "";
+  /** @type {number[]} */
   const lineStarts = [];
   for (const line of lines) {
     text += text === "" ? "" : " ";
@@ -309,6 +293,7 @@ function checkParagraph(lines, source, onError, abbreviations) {
   });
 }
 
+/** @type {import("markdownlint").Rule} */
 const rule = {
   "names": ["sentence-per-line"],
   "description": "Each line holds exactly one sentence",
@@ -318,11 +303,8 @@ const rule = {
   "tags": ["whitespace", "prose"],
   "parser": "micromark",
   // fixInfo is left out because prose is rewrapped by hand.
-  /**
-   * @param {RuleParams} params
-   * @param {OnError} onError
-   */
   "function": (params, onError) => {
+    /** @type {string[]} */
     const configured = params.config.abbreviations ?? [];
     const abbreviations = new Set([
       ...ABBREVIATIONS,

@@ -26,11 +26,13 @@
   },
   "scripts": {
     "test": "node --test",
-    "lint": "markdownlint-cli2 && prettier --check '**/*.mjs'"
+    "lint": "markdownlint-cli2 && prettier --check '**/*.mjs' && tsc -p jsconfig.json"
   },
   "devDependencies": {
+    "@types/node": "^26.6.6",
     "markdownlint": "^0.42.0",
     "markdownlint-cli2": "^0.24.0",
-    "prettier": "^3.9.10"
+    "prettier": "^3.9.10",
+    "typescript": "^7.0.2"
   }
 }
