@@ -61,7 +61,7 @@ config:
 
 ## What the rule reports
 
-The rule checks every paragraph, including those in list items and blockquotes.
+The rule checks every paragraph, including those in list items and blockquotes, and skips HTML blocks.
 It reports a line for either of these two problems.
 
 - "Second sentence starts on the same line" for a line that holds a sentence end with more text after it.
@@ -69,20 +69,25 @@ It reports a line for either of these two problems.
 
 The last line of a paragraph may end without a full stop, so a heading-like fragment is accepted there.
 
+The rule splits sentences with the Unicode sentence rules, through `Intl.Segmenter`.
 These do not count as sentence ends:
 
 - abbreviations from the list above, initials such as `D. A.`, and ellipses
-- full stops in code spans, link destinations, autolinks, and bare URLs
-- a full stop followed by a lowercase word
-- a full stop inside an open parenthesis or double quotation
+- a full stop followed by a lowercase word, as in `e.g. this`
+- a full stop without a space after it, as in `2.0` and `.NET`
+- full stops in code spans, link destinations, URLs, HTML tags, and images
+- a full stop inside an open parenthesis or double quotation, even across a line break
 
+A line that ends in a full stop, question mark, or exclamation mark ends its sentence, so the next line may start with a lowercase command name.
 A line may also end mid-sentence when it ends with a backslash hard break, or when it holds a single token such as a long URL or path.
 
 ## Known limits
 
 - A sentence that ends in a listed abbreviation is missed when a second sentence follows it on the same line.
-- A sentence that starts with a lowercase word, such as a command name, is read as the previous sentence continuing.
-- A lone straight quote, such as an inch mark, makes the rest of its line count as quoted text, so the line is reported.
+- A sentence that starts with a lowercase word or a digit in the middle of a line is read as the previous sentence continuing.
+- A question mark or exclamation mark ends a sentence even when a lowercase word follows it, as in `view! macro`.
+- A parenthesis that holds two sentences counts as one sentence, so a line break between them is reported.
+- A lone straight quote, such as an inch mark, makes the rest of its paragraph count as quoted text, so every later line in the paragraph is reported as ending mid-sentence.
 - A hard break made of two trailing spaces is not accepted, because it is invisible in the source.
 
 ## Develop

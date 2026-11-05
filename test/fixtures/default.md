@@ -88,7 +88,44 @@ He said "Go now." She left, so this line is FLAGME.
 
 The banner reads **"Try again."** The user clicks it, so this line is FLAGME.
 
+## Spans that cross a line break
+
+A code span that crosses a line break is FLAGME, as in `make
+check`. The second sentence on this line makes it FLAGME.
+
+A pair of quotes that crosses a line break is FLAGME ("One here." "Two
+there."). The second sentence on this line makes it FLAGME.
+
+## Full stops next to markup
+
+It talks to the card over [Port I/O](https://example.com/io). The second sentence makes this line FLAGME.
+The target is DOS/4G.
+The line before ends a sentence, because the G in 4G is not an initial.
+Install .NET before the build, because the full stop in .NET does not end a sentence.
+
+> [!NOTE]
+> The marker of a GitHub alert is not a sentence.
+
+## Lowercase words at a line break
+
+The build finishes first.
+npm then runs the tests, so a line may start with a lowercase command.
+
+## Images
+
+The screenshots follow, so this line is FLAGME
+![](media/screenshot.png)
+
+[![build](https://example.com/badge.svg)](https://example.com/ci)
+[![docs](https://example.com/docs.svg)](https://example.com/docs)
+
 ## Blocks the rule must not touch
+
+<p>An HTML block is not checked. It may hold two sentences.</p>
+
+<!--
+A comment is not checked. It may hold two sentences.
+-->
 
 | Column | Meaning |
 | ------ | ------- |

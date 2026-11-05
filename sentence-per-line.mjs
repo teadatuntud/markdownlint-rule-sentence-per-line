@@ -1,9 +1,7 @@
 // @ts-check
 
-// Each line holds one full sentence. The rule reports a line that starts a
-// second sentence, and a line before the last in a paragraph that does not
-// end at a sentence boundary. The last line may be a fragment without a full
-// stop.
+// Every sentence must start a line, and every line must start a sentence.
+// A paragraph's last line may be a fragment.
 
 // These types cover the part of the markdownlint API that the rule uses, so
 // the package does not depend on markdownlint.
@@ -40,12 +38,9 @@ const ABBREVIATIONS = new Set([
   "no.",
 ]);
 
-// Matches sentence punctuation and any closing quotes or brackets after it.
-const BOUNDARY = /[.?!]["'’)\]]*/g;
+const SENTENCES = new Intl.Segmenter("en", { "granularity": "sentence" });
 
-// A sentence may continue after a backslash hard break. Two trailing spaces
-// are not accepted, because they are invisible in the source.
-const HARD_BREAK = /\\$/;
+const LINE_END = /[.?!]["'\u201d\u2019)\]]*$/;
 
 // Masked so their punctuation does not count. The mask is upper case,
 // because a lowercase word after a full stop continues the sentence.
@@ -53,6 +48,7 @@ const FILLED = new Set([
   "autolink",
   "codeText",
   "htmlText",
+  "image",
   "literalAutolink",
   "mathText",
 ]);
@@ -67,19 +63,27 @@ const SKIPPED = new Set([
 ]);
 
 /**
- * @typedef {{ lineNumber: number, text: string, columns: number[] }} Line
+ * @typedef {{
+ *   lineNumber: number,
+ *   text: string,
+ *   columns: number[],
+ *   hardBreak: boolean,
+ * }} Line
  */
 
 /** @param {Token} paragraph */
 function proseLines(paragraph) {
+  /** @type {Line[]} */
+  const lines = [];
   /** @type {Line} */
-  let line = { lineNumber: paragraph.startLine, text: "", columns: [] };
-  const lines = [line];
+  let line;
 
-  const newLine = () => {
-    line = { lineNumber: line.lineNumber + 1, text: "", columns: [] };
+  /** @param {number} lineNumber */
+  const newLine = (lineNumber) => {
+    line = { lineNumber, text: "", columns: [], hardBreak: false };
     lines.push(line);
   };
+  newLine(paragraph.startLine);
 
   /**
    * @param {number} column
@@ -96,11 +100,14 @@ function proseLines(paragraph) {
   const walk = (tokens) => {
     for (const token of tokens) {
       if (token.type === "lineEnding") {
-        newLine();
+        newLine(line.lineNumber + 1);
+      } else if (token.type === "hardBreakEscape") {
+        // Only backslash breaks. Trailing spaces are invisible in the source.
+        line.hardBreak = true;
       } else if (FILLED.has(token.type)) {
         token.text.split("\n").forEach((part, index) => {
           if (index > 0) {
-            newLine();
+            newLine(line.lineNumber + 1);
           }
           append(index === 0 ? token.startColumn : 1, "X".repeat(part.length));
         });
@@ -118,7 +125,20 @@ function proseLines(paragraph) {
   };
 
   walk(paragraph.children);
-  return lines;
+
+  // A line may hold only markup, such as a footnote call.
+  return lines.flatMap((line) => {
+    const lead = line.text.search(/\S/);
+    return lead === -1
+      ? []
+      : [
+          {
+            ...line,
+            text: line.text.slice(lead),
+            columns: line.columns.slice(lead),
+          },
+        ];
+  });
 }
 
 // Skips HTML blocks, because the HTML decides how their text wraps.
@@ -136,72 +156,36 @@ function* paragraphs(tokens) {
   }
 }
 
-// True when the full stop at index belongs to an abbreviation, an initial or
-// an ellipsis.
 /**
- * @param {string} text
- * @param {number} index
+ * @param {string} sentence
  * @param {Set<string>} abbreviations
  */
-function isFalseBoundary(text, index, abbreviations) {
-  if (text[index] !== ".") {
+function endsInAbbreviation(sentence, abbreviations) {
+  const text = sentence.trimEnd().replace(/["'\u201d\u2019)\]]+$/, "");
+  if (!text.endsWith(".")) {
     return false;
   }
-  if (text[index - 1] === "." || text[index + 1] === ".") {
-    return true;
-  }
 
-  const before = text.slice(0, index + 1);
-  const word = (/[A-Za-z.]+$/.exec(before) || [""])[0];
+  const word = (/[A-Za-z.]+$/.exec(text) ?? [""])[0];
   // An initial is a lone capital, so the "O." that ends "I/O." is not one.
-  const initial = /(?:^|[\s("\u201c])[A-Z]\.$/.test(before);
+  const initial = /(?:^|[\s("\u201c])[A-Z]\.$/.test(text);
 
-  return abbreviations.has(word.toLowerCase()) || initial;
+  return (
+    word.endsWith("..") || abbreviations.has(word.toLowerCase()) || initial
+  );
 }
 
-// Returns the offset just past each sentence boundary on the line.
-/**
- * @param {string} text
- * @param {Set<string>} abbreviations
- */
-function boundaries(text, abbreviations) {
-  const ends = [];
-
-  BOUNDARY.lastIndex = 0;
-  let match;
-  while ((match = BOUNDARY.exec(text)) !== null) {
-    const end = match.index + match[0].length;
-    const next = text[end];
-    // Whitespace or the line end must follow, which rules out "2.0" and
-    // "README.md".
-    if (
-      (next === undefined || /\s/.test(next)) &&
-      !isFalseBoundary(text, match.index, abbreviations)
-    ) {
-      ends.push(end);
-    }
-  }
-
-  return ends;
-}
-
-// True when a parenthesis or double quotation is still open at index. A full
-// stop inside one does not end the outer sentence.
-//
 // Single quotes are skipped, because they double as apostrophes. A lone
-// straight quote, such as an inch mark, leaves the rest of its line open, so
-// the rule reports that line. A wrong report is easier to spot than a missed
-// one.
-/**
- * @param {string} text
- * @param {number} index
- */
-function insideOpenSpan(text, index) {
+// straight quote, such as an inch mark, joins the rest of the paragraph into
+// one sentence, so the rule reports each later line. A wrong report is easier
+// to spot than a missed one.
+/** @param {string} sentence */
+function leavesSpanOpen(sentence) {
   let brackets = 0;
   let quotes = 0;
   let straight = false;
 
-  for (const character of text.slice(0, index)) {
+  for (const character of sentence) {
     if (character === "(") {
       brackets += 1;
     } else if (character === ")") {
@@ -218,21 +202,42 @@ function insideOpenSpan(text, index) {
   return brackets > 0 || quotes > 0 || straight;
 }
 
-// Finds the first letter after a boundary, past whitespace, opening quotes
-// and brackets.
-const NEXT_LETTER = /^[\s"'([\u201c\u2018]*([A-Za-z])/;
-
-// True when the next word starts in lower case, so the sentence continues,
-// as after a quotation that ends in a full stop. A sentence that starts with
-// a lowercase word, such as a command name, is missed.
 /**
  * @param {string} text
- * @param {number} end
+ * @param {number[]} lineStarts
+ * @param {Set<string>} abbreviations
  */
-function continuesInLowerCase(text, end) {
-  const match = NEXT_LETTER.exec(text.slice(end));
+function sentenceStarts(text, lineStarts, abbreviations) {
+  const candidates = new Set();
+  for (const { index } of SENTENCES.segment(text)) {
+    // Segmenter also splits inside ".NET", so only take splits after spaces.
+    if (/\s/.test(text[index - 1] ?? "")) {
+      candidates.add(index);
+    }
+  }
+  // Line-final punctuation always ends a sentence, even before a lowercase
+  // command name.
+  for (const first of lineStarts) {
+    if (LINE_END.test(text.slice(0, first).trimEnd())) {
+      candidates.add(first);
+    }
+  }
 
-  return match !== null && match[1] === match[1].toLowerCase();
+  const starts = [];
+  let from = 0;
+  for (const index of [...candidates].sort((a, b) => a - b)) {
+    const sentence = text.slice(from, index);
+    if (
+      endsInAbbreviation(sentence, abbreviations) ||
+      leavesSpanOpen(sentence)
+    ) {
+      continue;
+    }
+    starts.push(index);
+    from = index;
+  }
+
+  return starts;
 }
 
 /**
@@ -253,43 +258,54 @@ function snippet(line, from) {
  * @param {Set<string>} abbreviations
  */
 function checkParagraph(lines, source, onError, abbreviations) {
-  lines.forEach(({ lineNumber, text, columns }, offset) => {
-    const sourceLine = source[lineNumber - 1];
-    // Both checks below use this list, so a line that ends at a quoted full
-    // stop is reported as ending mid-sentence.
-    const ends = boundaries(text, abbreviations).filter(
-      (end) => !insideOpenSpan(text, end),
-    );
-    const last = offset === lines.length - 1;
+  let text = "";
+  const lineStarts = [];
+  for (const line of lines) {
+    text += text === "" ? "" : " ";
+    lineStarts.push(text.length);
+    text += line.text;
+  }
 
-    for (const end of ends) {
-      if (text.slice(end).trim() === "" || continuesInLowerCase(text, end)) {
-        continue;
-      }
-      onError({
-        lineNumber,
-        "detail": "Second sentence starts on the same line",
-        "context": snippet(sourceLine, columns[end - 1]),
-      });
-      break;
+  const starts = sentenceStarts(text, lineStarts, abbreviations);
+  const startSet = new Set(starts);
+  /** @type {Set<number>} */
+  const reported = new Set();
+
+  for (const start of starts) {
+    const index = lineStarts.findLastIndex((first) => first <= start);
+    if (lineStarts[index] === start || reported.has(index)) {
+      continue;
     }
+    reported.add(index);
+    const { lineNumber, columns } = lines[index];
+    const previousEnd = text.slice(0, start).trimEnd().length - 1;
+    onError({
+      lineNumber,
+      "detail": "Second sentence starts on the same line",
+      "context": snippet(
+        source[lineNumber - 1],
+        columns[previousEnd - lineStarts[index]],
+      ),
+    });
+  }
 
-    if (last || HARD_BREAK.test(text)) {
+  lines.forEach((line, index) => {
+    const next = lineStarts[index + 1];
+    if (
+      next === undefined ||
+      startSet.has(next) ||
+      line.hardBreak ||
+      // A single word, such as a long URL, cannot be broken.
+      !/\s/.test(line.text.trim())
+    ) {
       return;
     }
-
-    const trimmed = text.trim();
-    // A line with a single word, such as a long URL, cannot be broken.
-    if (!/\s/.test(trimmed)) {
-      return;
-    }
-    if (!ends.includes(text.trimEnd().length)) {
-      onError({
-        lineNumber,
-        "detail": "Line ends mid-sentence; break at sentence boundaries only",
-        "context": snippet(sourceLine, sourceLine.trimEnd().length),
-      });
-    }
+    const sourceLine = source[line.lineNumber - 1];
+    onError({
+      "lineNumber": line.lineNumber,
+      "detail": "Line ends mid-sentence; break at sentence boundaries only",
+      "context": snippet(sourceLine, sourceLine.trimEnd().length),
+    });
   });
 }
 
