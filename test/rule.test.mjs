@@ -5,9 +5,29 @@
 
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { test } from "node:test";
-import { lint } from "markdownlint/promise";
 import rule from "../sentence-per-line.mjs";
+
+// markdownlint 0.36 has only a CommonJS API. Later versions export lint from
+// markdownlint/promise.
+/** @returns {Promise<typeof import("markdownlint/promise").lint>} */
+async function loadLint() {
+  try {
+    return (await import("markdownlint/promise")).lint;
+  } catch (error) {
+    if (
+      !(error instanceof Error) ||
+      !("code" in error) ||
+      error.code !== "ERR_PACKAGE_PATH_NOT_EXPORTED"
+    ) {
+      throw error;
+    }
+    return createRequire(import.meta.url)("markdownlint").promises.markdownlint;
+  }
+}
+
+const lint = await loadLint();
 
 /** @type {Record<string, true | { abbreviations: string[] }>} */
 const cases = {

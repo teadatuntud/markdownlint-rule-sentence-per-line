@@ -5,7 +5,29 @@ on:
   pull_request:
 
 jobs:
-  check:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: ["22", "24"]
+        markdownlint: ["0.36.1", "locked"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - run: npm ci
+
+      - if: matrix.markdownlint != 'locked'
+        run: npm install --no-save markdownlint@${{ matrix.markdownlint }}
+
+      - run: npm test
+
+  # tsc uses the types of the locked markdownlint, so the lint runs once.
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,7 +38,4 @@ jobs:
           cache: npm
 
       - run: npm ci
-
-      # The docs lint uses the rule, so test the rule first.
-      - run: npm test
       - run: npm run lint
