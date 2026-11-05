@@ -94,4 +94,4 @@ npm run lint
 ```
 
 The fixtures in `test/` mark every line the rule must report with the word `FLAGME`.
-The comment at the top of `test/run` describes the layout.
+The comment at the top of `test/rule.test.mjs` describes how the test reads them.

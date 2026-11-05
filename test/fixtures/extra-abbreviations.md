@@ -1,7 +1,7 @@
 # Fixtures for a configured abbreviation list
 
-Input for the `run` script one level up, which explains how expectations are derived from this file.
-The neighbouring config adds `dr.` and `prof.` to the abbreviations the rule knows.
+Input for `test/rule.test.mjs`, which explains how expectations are derived from this file.
+The test adds `dr.` and `prof.` to the abbreviations the rule knows.
 
 ## The configured words
 
