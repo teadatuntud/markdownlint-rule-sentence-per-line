@@ -13,6 +13,7 @@ import rule from "../sentence-per-line.mjs";
 const cases = {
   "default": true,
   "extra-abbreviations": { "abbreviations": ["dr.", "prof."] },
+  "limits": true,
 };
 
 for (const [name, config] of Object.entries(cases)) {
