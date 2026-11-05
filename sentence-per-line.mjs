@@ -230,6 +230,9 @@ function checkParagraph(lines, startLine, onError, abbreviations) {
 const rule = {
   "names": ["sentence-per-line"],
   "description": "Each line holds exactly one sentence",
+  "information": new URL(
+    "https://github.com/teadatuntud/markdownlint-rule-sentence-per-line#readme",
+  ),
   "tags": ["whitespace", "prose"],
   "parser": "markdownit",
   // fixInfo is left out because prose is rewrapped by hand.
