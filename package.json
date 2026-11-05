@@ -25,9 +25,11 @@
     "node": ">=20"
   },
   "scripts": {
-    "test": "test/run"
+    "test": "test/run",
+    "lint": "markdownlint-cli2 && prettier --check '**/*.mjs' && shellcheck test/run && shfmt -d test/run"
   },
   "devDependencies": {
-    "markdownlint-cli2": "^0.24.0"
+    "markdownlint-cli2": "^0.24.0",
+    "prettier": "^3.9.10"
   }
 }

@@ -1,0 +1,15 @@
+customRules:
+  - "./sentence-per-line.mjs"
+
+globs:
+  - "**/*.md"
+
+ignores:
+  - "node_modules/**"
+  # The test fixtures break the rules on purpose.
+  - "test/**"
+
+config:
+  # Lines break at sentence ends, so their length is not checked.
+  MD013: false
+  sentence-per-line: true
