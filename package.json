@@ -22,7 +22,15 @@
     "sentence-per-line.mjs"
   ],
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
+  },
+  "peerDependencies": {
+    "markdownlint": ">=0.36.0"
+  },
+  "peerDependenciesMeta": {
+    "markdownlint": {
+      "optional": true
+    }
   },
   "scripts": {
     "test": "node --test",
