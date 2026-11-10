@@ -14,7 +14,7 @@
     "url": "git+https://github.com/teadatuntud/markdownlint-rule-sentence-per-line.git"
   },
   "private": true,
-  "license": "UNLICENSED",
+  "license": "MIT",
   "type": "module",
   "main": "./sentence-per-line.mjs",
   "exports": "./sentence-per-line.mjs",
